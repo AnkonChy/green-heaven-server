@@ -51,6 +51,7 @@ async function run() {
   try {
     const db = client.db("green-heaven");
     const usersCollection = db.collection("users");
+    const plantsCollection = db.collection("plants");
 
     //save or update a user in db
     app.post("/users/:email", async (req, res) => {
@@ -72,6 +73,7 @@ async function run() {
       console.log(result);
       res.send(result);
     });
+
     // Generate jwt token
     app.post("/jwt", async (req, res) => {
       const email = req.body;
@@ -99,6 +101,19 @@ async function run() {
       } catch (err) {
         res.status(500).send(err);
       }
+    });
+
+    //save a plant data in db
+    app.post("/plants", verifyToken, async (req, res) => {
+      const plant = req.body;
+      const result = await plantsCollection.insertOne(plant);
+      res.send(result);
+    });
+
+    //get all plants
+    app.get("/plants", async (req, res) => {
+      const result = await plantsCollection.find().limit(20).toArray();
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
