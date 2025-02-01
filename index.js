@@ -49,6 +49,29 @@ const client = new MongoClient(uri, {
 });
 async function run() {
   try {
+    const db = client.db("green-heaven");
+    const usersCollection = db.collection("users");
+
+    //save or update a user in db
+    app.post("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const user = req.body;
+      //check if user exists in db
+      const isExist = await usersCollection.findOne(query);
+      if (isExist) {
+        console.log(isExist);
+        return res.send(isExist);
+      }
+
+      const result = await usersCollection.insertOne({
+        ...user,
+        role: "customer",
+        timestamp: Date.now(),
+      });
+      console.log(result);
+      res.send(result);
+    });
     // Generate jwt token
     app.post("/jwt", async (req, res) => {
       const email = req.body;
