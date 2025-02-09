@@ -152,32 +152,35 @@ async function run() {
       const result = await ordersCollection
         .aggregate([
           {
-            $match: query,
+            $match: query,  //match specific customers data only by email
           },
           {
             $addFields: {
-              plantId: { $toObjectId: "$plantId" },
+              plantId: { $toObjectId: "$plantId" },  //convert plantId string field to objectId field
             },
           },
           {
-            $lookup: {
-              from: "plants",
-              localField: "plantId",
-              foreignField: "_id",
-              as: "plants",
+            $lookup: {              //go to a different collection and look for data
+              from: "plants",  //collection name
+              localField: "plantId",  //local data that you want to match
+              foreignField: "_id", //foreign field name of that same data
+
+              as: "plants", //return the data as plants array (array naming)
             },
           },
           {
-            $unwind: "$plants",
+            $unwind: "$plants",  //unwind lookup result, return without array
           },
           {
-            $addFields: {
+            $addFields: {  
+              //add these fields in order object
               name: "$plants.name",
               image: "$plants.image",
               category: "$plants.category",
             },
           },
           {
+            //remove plants object property from order object
             $project: {
               plants: 0,
             },
