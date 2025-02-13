@@ -135,11 +135,17 @@ async function run() {
     //manage plant quantity
     app.patch("/plants/quantity/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
-      const { quantityToUpdate } = req.body;
+      const { quantityToUpdate, status } = req.body;
       const filter = { _id: new ObjectId(id) };
       let updateDoc = {
         $inc: { quantity: -quantityToUpdate },
       };
+
+      if (status === "increase") {
+        updateDoc = {
+          $inc: { quantity: quantityToUpdate },
+        };
+      }
       const result = await plantsCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
@@ -152,27 +158,28 @@ async function run() {
       const result = await ordersCollection
         .aggregate([
           {
-            $match: query,  //match specific customers data only by email
+            $match: query, //match specific customers data only by email
           },
           {
             $addFields: {
-              plantId: { $toObjectId: "$plantId" },  //convert plantId string field to objectId field
+              plantId: { $toObjectId: "$plantId" }, //convert plantId string field to objectId field
             },
           },
           {
-            $lookup: {              //go to a different collection and look for data
-              from: "plants",  //collection name
-              localField: "plantId",  //local data that you want to match
+            $lookup: {
+              //go to a different collection and look for data
+              from: "plants", //collection name
+              localField: "plantId", //local data that you want to match
               foreignField: "_id", //foreign field name of that same data
 
               as: "plants", //return the data as plants array (array naming)
             },
           },
           {
-            $unwind: "$plants",  //unwind lookup result, return without array
+            $unwind: "$plants", //unwind lookup result, return without array
           },
           {
-            $addFields: {  
+            $addFields: {
               //add these fields in order object
               name: "$plants.name",
               image: "$plants.image",
@@ -188,6 +195,19 @@ async function run() {
         ])
         .toArray();
 
+      res.send(result);
+    });
+
+    //cancel / delete an order
+    app.delete("/orders/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const order = await ordersCollection.findOne(query);
+      if (order.status === "delivered")
+        return res
+          .status(409)
+          .send("Cannot cancel once the product is delivered");
+      const result = await ordersCollection.deleteOne(query);
       res.send(result);
     });
 
