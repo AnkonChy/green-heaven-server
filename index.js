@@ -112,14 +112,28 @@ async function run() {
     });
 
     //update a user role & status
-    app.patch("/user/role/:email", verifyToken, async (req, res) => {
-      const { role, status } = req.body;
-      const email = req.params.email;
-      const filter = { email };
-      const updateDoc = {
-        $set: { role, status: "Verified" },
-      };
-      const result = await usersCollection.updateOne(filter, updateDoc);
+    app.patch(
+      "/user/role/:email",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { role, status } = req.body;
+        const email = req.params.email;
+        const filter = { email };
+        const updateDoc = {
+          $set: { role, status: "Verified" },
+        };
+        const result = await usersCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      }
+    );
+
+    //get inventory data for seller
+    app.get("/plants/seller", verifyToken, verifySeller, async (req, res) => {
+      const email = req.user.email;
+      const result = await plantsCollection
+        .find({ "seller.email": email })
+        .toArray();
       res.send(result);
     });
 
