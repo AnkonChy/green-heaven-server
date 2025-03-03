@@ -145,6 +145,25 @@ async function run() {
       res.send(result);
     });
 
+    //single plant data
+    app.put("/plants/:id", verifyToken, verifySeller, async (req, res) => {
+      const data = req.body;
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          name: data?.name,
+          description: data?.description,
+          category: data?.category,
+          price: data?.price,
+          quantity: data?.quantity,
+          image: data?.image,
+        },
+      };
+      const result = await plantsCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+
     //get user role
     app.get("/users/role/:email", async (req, res) => {
       const email = req.params.email;
