@@ -5,6 +5,7 @@ const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
 const morgan = require("morgan");
+const nodemailer = require("nodemailer");
 
 const port = process.env.PORT || 9000;
 const app = express();
@@ -33,6 +34,50 @@ const verifyToken = async (req, res, next) => {
     }
     req.user = decoded;
     next();
+  });
+};
+
+//send email using nodemailer
+const sendEmail = (emailAddress, emailData) => {
+  // const emailData = {
+  //   subject: "This is a very important subject",
+  //   message: "Nice Message",
+  // };
+  //create transporter
+  const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false, // true for port 465, false for other ports
+    auth: {
+      user: process.env.NODEMAILER_USER,
+      pass: process.env.NODEMAILER_PASS,
+    },
+  });
+  //verify connection
+  transporter.verify((error, success) => {
+    if (error) {
+      console.log(error);
+    } else {
+      console.log("Transporter is ready to emails", success);
+    }
+  });
+  // transporter.sendMail()
+  const mainBody = {
+    from: process.env.NODEMAILER_USER, // sender address
+    to: emailAddress, // list of receivers
+    subject: emailData?.subject, // Subject line
+    // text: emailData?.message, // plain text body
+    html: `<p>${emailData?.message}</p>`, // html body
+  };
+
+  //send email
+  transporter.sendMail(mainBody, (error, info) => {
+    if (error) {
+      console.log(error);
+    } else {
+      console.log(info);
+      console.log("Email sent: " + info?.response);
+    }
   });
 };
 
@@ -84,6 +129,7 @@ async function run() {
 
     //save or update a user in db
     app.post("/users/:email", async (req, res) => {
+      sendEmail();
       const email = req.params.email;
       const query = { email };
       const user = req.body;
@@ -225,6 +271,20 @@ async function run() {
     app.post("/order", verifyToken, async (req, res) => {
       const orderInfo = req.body;
       const result = await ordersCollection.insertOne(orderInfo);
+      //send email
+      if (result?.insertedId) {
+        // to customer
+        sendEmail(orderInfo?.customer?.email, {
+          subject: "Order Successful",
+          message: `You've placed an order successfully. Transaction Id: ${result?.insertedId}`,
+        });
+
+        // to seller
+        sendEmail(orderInfo?.seller, {
+          subject: "Hurray!, You have an order to process",
+          message: `Get the plants for ${orderInfo?.customer?.name}`,
+        });
+      }
       res.send(result);
     });
 
