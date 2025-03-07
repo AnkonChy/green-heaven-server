@@ -453,7 +453,30 @@ async function run() {
       // get total user, total plants
       const totalUser = await usersCollection.countDocuments();
       const totalPlants = await plantsCollection.estimatedDocumentCount();
-      res.send({ totalPlants, totalUser });
+
+      const allOrder = await ordersCollection.find().toArray();
+      // const totalOrders = allOrder.length;
+      // const totalPrice = allOrder.reduce((sum, order) => sum + order.price, 0);
+
+      //get total revinue, total order
+      const ordersDetails = await ordersCollection
+        .aggregate([
+          {
+            $group: {
+              _id: null,
+              totalRevenue: { $sum: "$price" },
+              totalOrder: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+            },
+          },
+        ])
+        .next();
+
+      res.send({ totalPlants, totalUser, ...ordersDetails });
     });
 
     // Send a ping to confirm a successful connection
