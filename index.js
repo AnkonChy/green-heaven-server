@@ -457,8 +457,44 @@ async function run() {
       const allOrder = await ordersCollection.find().toArray();
       // const totalOrders = allOrder.length;
       // const totalPrice = allOrder.reduce((sum, order) => sum + order.price, 0);
-
-      //get total revinue, total order
+      // const myData = {
+      //   date: "11/01/2025",
+      //   quantity: 4000,
+      //   price: 2400,
+      //   order: 2400,
+      // };
+      //generate chart data
+      const chartData = await ordersCollection
+        .aggregate([
+          {
+            $group: {
+              _id: {
+                $dateToString: {
+                  format: "%Y-%m-%d",
+                  date: {
+                    $toDate: "$_id",
+                  },
+                },
+              },
+              quantity: {
+                $sum: "$quantity",
+              },
+              price: { $sum: "$price" },
+              order: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              date: "$_id",
+              quantity: 1,
+              order: 1,
+              price: 1,
+            },
+          },
+        ])
+        .next();
+      //get total revenue, total order
       const ordersDetails = await ordersCollection
         .aggregate([
           {
@@ -476,7 +512,20 @@ async function run() {
         ])
         .next();
 
-      res.send({ totalPlants, totalUser, ...ordersDetails });
+      res.send({ totalPlants, totalUser, ...ordersDetails, chartData });
+    });
+
+    //create payment intent
+    app.post("/create-payment-intent", verifyToken, async (req, res) => {
+      const { quantity, plantId } = req.body;
+      const plant = await plantsCollection.findOne({
+        _id: new ObjectId(plantId),
+      });
+      if (!plant) {
+        return res.status(400).send({ message: "Plant not found" });
+      }
+      const totalPrice = (quantity * plant.price) * 100 //total price in cent (poisa)
+      console.log(totalPrice);
     });
 
     // Send a ping to confirm a successful connection
